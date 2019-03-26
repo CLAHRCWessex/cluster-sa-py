@@ -8,7 +8,7 @@ Created on Mon Mar 25 17:48:01 2019
 
 import pytest
 
-import cluster_sa.sa as csa
+import clustering.sa as csa
 import numpy as np
 
 def test_acceptance_probability_100_1():
