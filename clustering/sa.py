@@ -7,6 +7,7 @@ Created on Mon Mar 25 15:31:34 2019
 """
 
 import numpy as np
+from scipy.spatial.distance import pdist
 from abc import ABC, abstractmethod
 
 class AbstractCoolingSchedule(ABC):
@@ -14,7 +15,10 @@ class AbstractCoolingSchedule(ABC):
     Encapsulates a cooling schedule for 
     a simulated annealing algorithm.
     
-    Abstract class.  
+    Abstract class.
+    Concrete implementations can be 
+    customised to extend the range of
+    cooling schedules available to the SA.
     '''
     def __init__(self, starting_temp):
         self.starting_temp = starting_temp
@@ -60,45 +64,58 @@ class CoruCoolingSchedule(AbstractCoolingSchedule):
         
         Keyword arguments:
             iteration --int. the iteration number
-    et about the 5% of the time he wants to use Windows to access legacy model
+    
         '''
         
         #where did this cooling scheme come from?
         #some standard methods: 
         # https://uk.mathworks.com/help/gads/how-simulated-annealing-works.html
-        return np.exp( -(k - 1) * 10 / self.iter_max)
+        return np.exp( -(k - 1) * 10 / self.max_iter)
     
 
 
 class SACluster(object):
     
-    def __init__(self, n_clusters, dist_metric='corr', 
+    def __init__(self, n_clusters, cooling_schedule, dist_metric='correlation', 
                  max_iter=np.float32(1e5)):
         '''
+        
+        Constructor method.
+        
         Keyword arguments:
         
         n_clusters --   int: The number of clusters to generate.  
                         Each observation is assigned to one cluster
+                        
+        cooling_schedule -- AbstractCoolingSchedule: The cooling schedule
+                            that is the annealing employs.  Implemented
+                            as a concrete instance of AbstractCoolingSchedule
+                            Options include:
+                                ExponentialCoolingSchedule
+                                CoruCoolingSchedule
         
         dist_metric --  Distance metric. The cost function is the sum of the 
                         group-average distances between group
                         members. The clustering aims to minimise this 
                         cost function. 
                         Options:
-                            'corr' -- correlation (default)
+                            'correlation' -- correlation (default)
                             'euclidean' -- euclidean distance
+                            ...others...
                             
         max_iter --    Int, Optional, default = le5
                        The maximum number of iterations for the SA
                        
-                            
-        TM To - do:
+        
+        
+        TM TO-DO:
             Not done anything about plot progress...
             
         '''
         self.n_clusters = n_clusters
         self.dist_metric = dist_metric
         self.max_iter = max_iter
+        self.cooling_schedule = cooling_schedule
         
     def fit(self, data):
         '''
@@ -113,28 +130,49 @@ class SACluster(object):
         #TM notes - why 3000?
         stopping_distance = max(2*n_observations, 3000) 
         
+        state_init = np.random.randint(low=0, 
+                                       high=self.n_clusters, 
+                                       size=n_observations)
+        
+        state = state_init.copy()
+        #call cost function        
+
+    def cost(self, state, data):
+        '''
+        Calculate the energy of the solution
+        
+        Keyword arguments:
+            state -- numpy.ndarray (vector), each index corresponds to an 
+                     observation each value is a int between 0 and 
+                     self.n_clusters (exclusive) that indicates to which 
+                     cluster the observation has been assigned 
+            
+            data -- numpy.ndarray (matrix), unlabelled x data
+        '''
     
+        cluster_count = np.zeros(self.n_clusters, dtype=np.int64)
+        cluster_energy = np.zeros(self.n_clusters, dtype=np.float64)
+        
+        for cluster_index in range(1, self.n_clusters):
+            assigned_to = (state == cluster_index)
+            cluster_count[cluster_index] = np.count_nonzero(assigned_to)
+            cluster_energy[cluster_index] = pdist(data[assigned_to, :], 
+                                            self.dist_metric).sum()
+        
+        
+        return cluster_energy, cluster_count
+        
+    
+   
         
 
 
 
-'''
-function [group_E, grp_count] = cost_func(state, dat, ngroups, distance_metric)
-% cs = categories(state);
-for i=1:ngroups
-    tf = state==i; %cs(i);
-    grp_count(i) = nnz(tf);
-    all_dist =  pdist( dat(tf,:), distance_metric );
-    group_E(i) = sum( all_dist );
-end
-% diffs = all_dist-all_dist(randperm(numel(all_dist)));
-% diff_stdev = stdev(diffs(diffs>0));
-end
-'''
 
-def cost(state, data, n_clusters, dist_metric):
-    #for i in range(1, n_clusters):
-    pass
+
+
+        
+    
 
 
    

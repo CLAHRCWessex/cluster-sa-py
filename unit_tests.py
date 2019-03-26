@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Mon Mar 25 17:48:01 2019
+Unit tests for the SA clustering algorithm developed by 
+Justin Ashmall and Christina Pagel.  
 
-@author: tom
+These tests run with the package pytest 
+https://docs.pytest.org/en/latest/
+
+'conda install pytest' or 'pip install pytest'
+
 """
 
 import pytest
@@ -123,6 +128,11 @@ def test_acceptance_probability_standardised_delta():
 # =============================================================================
 
 def test_exp_cooling_schedule():
+    '''
+    Exponential cool schedule
+    ExponentialCoolingSchedule()
+    Test different iteration numbers etc.
+    '''
     starting_temps = np.arange(100)
     expected = np.full(100, -1)
     actuals = np.full(100, -1)
@@ -131,6 +141,29 @@ def test_exp_cooling_schedule():
     for i in range(starting_temps.shape[0]):
         schedule = csa.ExponentialCoolingSchedule(starting_temps[i])
         expected[i] = starting_temps[i] * (0.95**ks[i])
+        actuals[i] = schedule.cool_temperature(ks[i])
+        
+    assert np.array_equal(expected, actuals)
+    
+    
+    
+def test_coru_cooling_schedule():
+    '''
+    CORU's custom cooling schedule
+    CoruCoolingSchedule
+    Test different iteration numbers etc.
+    
+    Note: what about tests the cause an error?
+    '''
+    starting_temps = np.arange(100)
+    expected = np.full(100, -1)
+    actuals = np.full(100, -1)
+    ks = np.arange(1, 101)
+    max_iter = np.arange(100, 3100, 30)
+        
+    for i in range(starting_temps.shape[0]):
+        schedule = csa.CoruCoolingSchedule(starting_temps[i], max_iter[i])
+        expected[i] = np.exp( -(ks[i] - 1) * 10 / max_iter[i])
         actuals[i] = schedule.cool_temperature(ks[i])
         
     assert np.array_equal(expected, actuals)
