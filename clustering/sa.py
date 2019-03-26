@@ -8,6 +8,32 @@ Created on Mon Mar 25 15:31:34 2019
 
 import numpy as np
 
+class SACluster(object):
+    
+    def __init__(self, n_clusters, dist_metric='corr'):
+        '''
+        Keyword arguments:
+        
+        n_clusters --   The number of clusters to generate.  
+                        Each observation is assigned to one cluster
+        
+        dist_metric --  Distance metric. The cost function is the sum of the 
+                        group-average distances between group
+                        members. The clustering aims to minimise this 
+                        cost function. 
+                        Options:
+                            'corr' -- correlation (default)
+                            'euclidean' -- euclidean distance
+                            
+        TM To - do:
+            Not done anything about plot progress...
+            
+        '''
+        self.n_clusters = n_clusters
+        self.dist_metruc = dist_metric
+    
+    def fit(self, data):
+        pass
 
 def acceptance_probability(old_energy, new_energy, temp, 
                            delta_energy_scaling=1):
