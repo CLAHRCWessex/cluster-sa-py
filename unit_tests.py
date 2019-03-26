@@ -118,4 +118,21 @@ def test_acceptance_probability_standardised_delta():
     
     assert expected == actual
 
+# =============================================================================
+# Unit test for CoolingSchedule
+# =============================================================================
+
+def test_exp_cooling_schedule():
+    starting_temps = np.arange(100)
+    expected = np.full(100, -1)
+    actuals = np.full(100, -1)
+    ks = np.arange(1, 101)
+    
+    for i in range(starting_temps.shape[0]):
+        schedule = csa.ExponentialCoolingSchedule(starting_temps[i])
+        expected[i] = starting_temps[i] * (0.95**ks[i])
+        actuals[i] = schedule.cool_temperature(ks[i])
+        
+    assert np.array_equal(expected, actuals)
+    
 
