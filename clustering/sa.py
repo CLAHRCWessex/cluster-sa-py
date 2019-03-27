@@ -167,52 +167,42 @@ class SACluster(object):
         return cluster_energy, cluster_count
 
 
-
-
-
-
-
     def neighbour(self, state, data, cluster_energies, cluster_counts):
         '''
-        
+
         Assigns a observation to a random cluster.
-        Calculates the change in energy (cost) and number of obs in 
+        Calculates the change in energy (cost) and number of obs in
         changed clusters
-        
+
         Returns:
         -----
-        
-        Tuple with 3 elements
-        
-        state_new -- updated cluster assignments
-        new_energies -- updated cluster energies
-        new_count -- updated counts of energies assigned to clusters
-        
+
+        Tuple with 3 items
+
+        0. state_new -- updated cluster assignments (the 'neighbour')
+        1. new_energies -- updated cluster energies
+        2. new_count -- updated counts of energies assigned to clusters
+
         Dev Notes:
         -----
         Seems like it should be refactored at some point so that
         'state' is a class with meta data energy and count
-        
+
         Keyword arguments:
         ------
         state -- current cluster assignments by observation
         data -- unlabelled x data
         cluster_energies -- energies (cost) by cluster (ordered by cluster)
         cluster_counts -- count of observations ordered by cluster
-        
-        
         '''
-        #sample an obvervation for state change
-        i_to_change = np.random.randint(state.shape[0])
-        v0 = state[i_to_change]
+        #sample an observation for state change
+        i_to_change, v0 = self.sample_observation(state)
 
         #shift the cluster of the sample obs by a random amount using modulo
-        n_shift = np.random.randint(self.n_clusters)
-        v1 = (v0 + n_shift - 1 % self.n_clusters)
+        v1 = self.random_cluster_shift(v0)
 
-        #create a copy of the states and shift cluster
-        state_new = state.copy()
-        state_new[i_to_change] = v1
+        #create neighbour of state with shifted cluster
+        state_new = self.generate_neighbour_state(state, i_to_change, v1)
 
         # Find the change in E (cost) for the old group
 # =============================================================================
@@ -222,49 +212,119 @@ class SACluster(object):
         original_group = (state == v0) # Members of the original group (tf0)
 
         delta_group_E0_sum = cdist(data[i_to_change, :],
-                                   data[original_group,: ],
+                                   data[original_group, : ],
                                    self.dist_metric).sum()
 
         delta_group_E0_sum = cdist(np.array([data[i_to_change, :]]),
-                                   data[original_group,: ],
+                                   data[original_group, : ],
                                    self.dist_metric).sum()
 
         new_group = (state == v1)
 
         delta_group_E1_sum = cdist(np.array([data[i_to_change, :]]),
-                           data[new_group,: ],
-                           self.dist_metric).sum()
+                                   data[new_group, : ],
+                                   self.dist_metric).sum()
 
-        new_energies, new_counts = copy_cluster_metadata(cluster_energies,
-                                                         cluster_counts)
-        
+        new_energies, new_counts = self.copy_cluster_metadata(cluster_energies,
+                                                              cluster_counts)
+
         new_energies[v0] -= delta_group_E0_sum
         new_energies[v1] += delta_group_E1_sum;
-        
+
         new_counts[v0] -= 1;
         new_counts[v1] += 1;
-        
+
         return state_new, new_energies, new_counts
-        
 
-def copy_cluster_metadata(cluster_energies, cluster_counts):
-    '''
-    Used to duplicate numpy arrays containing cluster energies
-    and counts
 
-    Returns
-    ------
-    A copy of the cluster energies (costs) np.ndarray (vector) and
-    cluster counts (number of obs assigned to each cluster) np.ndarray (vector)
+    def sample_observation(self, state):
+        '''
+        Sample an individual observation from the state
 
-    Keyword arguments:
-    -------
+        Returns
+        -----
+        Tuple with 2 items
+        0. sample_index -- int, the index of the observations within state
+        1. state[sample_index] -- int, the cluster number
 
-    cluster_energies -- np.ndarray (vector), ordered cluster energies
-    cluster_counts -- np.ndarray (vector), ordered cluster counts
+        Keyword arguments:
+        ------
+        state -- np.ndarray (vector),
+                 current cluster assignments by observation
 
-    '''
-    return cluster_energies.copy(), cluster_counts.copy()
+        '''
+        sample_index = np.random.randint(state.shape[0])
+        return sample_index, state[sample_index]
+
+
+    def random_cluster_shift(self, original_cluster):
+        '''
+
+        Shifts a cluster number by a random amount using modulo.
+
+        Assumes that original_cluster is between 0 and self.n_clusters
+        (no validation)
+
+        Returns
+        ------
+        new_cluster -- int, between 0 and self.n_clusters (exclusive)
+                       A new cluster number
+
+        Keyword arguments:
+        ------
+        original_cluster -- int, between 0 and self.n_clusters
+                            represents a cluster number
+
+        '''
+        n_shift = np.random.randint(self.n_clusters)
+        new_cluster = (original_cluster + n_shift - 1) % self.n_clusters
+        return new_cluster
+
+
+    def generate_neighbour_state(self, state, i_to_change, new_cluster):
+        '''
+        Clones 'state' and updates index 'i_to_change' to 'new_cluster'
+        This 'new_state' is a neighbour to state
+
+        Returns
+        -----
+        state_new -- np.ndarray, a vector of clusters.  The order represents
+                     the observations in the unlabelled x's.  Each array
+                     element represents the cluster that observation i
+                     has been assigned
+
+        Keyword arguments:
+        -----
+        state -- np.ndarray (vector),
+                 current cluster assignments by observation
+
+        i_to_change -- int, index within state to update
+        new_cluster -- int, between 0 and self.n_clusters (exclusive)
+                       the updated cluster number
+        '''
+        state_new = state.copy()
+        state_new[i_to_change] = new_cluster
+        return state_new
+
+
+    def copy_cluster_metadata(self, cluster_energies, cluster_counts):
+        '''
+        Used to duplicate numpy arrays containing cluster energies
+        and counts
+
+        Returns
+        ------
+        A copy of the cluster energies (costs) np.ndarray (vector) and
+        cluster counts (number of obs assigned to each cluster) np.ndarray (vector)
+
+        Keyword arguments:
+        -------
+
+        cluster_energies -- np.ndarray (vector), ordered cluster energies
+        cluster_counts -- np.ndarray (vector), ordered cluster counts
+
+        '''
+        return cluster_energies.copy(), cluster_counts.copy()
 
 
 
@@ -274,8 +334,8 @@ def acceptance_probability(old_energy, new_energy, temp,
     Calculates the acceptance probability for the SA.
 
     Returns:
-    ------    
-    
+    ------
+
         A float representing the probability that the new state is accepted.
 
     Keyword arguments:
