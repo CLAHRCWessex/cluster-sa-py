@@ -255,9 +255,27 @@ def test_sample_observation():
     
     assert expected_value == actual_value
 
+def test_generate_neighbour_state():
+    state = np.zeros(10)
+    state[2:6] = 1
+    state[6:] = 2
+    
+    exp_state = state.copy()
+    
+    i_to_change = 3
+    new_cluster = 0
+        
+    exp_state[i_to_change] = new_cluster
+    
+    schedule = ExponentialCoolingSchedule(100)
+    n_clusters = 3
+    sa = SACluster(n_clusters=n_clusters, cooling_schedule=schedule)
+    actual = sa.generate_neighbour_state(state, i_to_change, new_cluster)
+    
+    assert np.array_equal(exp_state, actual)
     
 
-
+    
     
     
 
