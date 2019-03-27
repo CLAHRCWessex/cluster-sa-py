@@ -319,12 +319,34 @@ def test_random_cluster_shift_2():
     
     assert expected == actual_cluster
 
+def test_copy_cluster_metadata_energy():
+    #cooling schedule selected does not matter for the test
+    schedule = ExponentialCoolingSchedule(100)
+    n_clusters = 6
+    sa = SACluster(n_clusters=n_clusters, cooling_schedule=schedule)
     
+    energy = np.arange(n_clusters)
+    count = np.arange(10, 10+n_clusters)
+    
+    actual_e, actual_c = sa.copy_cluster_metadata(energy, count)
+    
+    assert np.array_equal(actual_e, energy)
+    
+    
+def test_copy_cluster_metadata_count():
+    #cooling schedule selected does not matter for the test
+    schedule = ExponentialCoolingSchedule(100)
+    n_clusters = 6
+    sa = SACluster(n_clusters=n_clusters, cooling_schedule=schedule)
+    
+    energy = np.arange(n_clusters)
+    count = np.arange(10, 10+n_clusters)
+    
+    actual_e, actual_c = sa.copy_cluster_metadata(energy, count)
+    
+    assert np.array_equal(actual_c, count)
     
 
-    
-    
-    
 
     
 
