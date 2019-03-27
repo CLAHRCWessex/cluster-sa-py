@@ -233,3 +233,33 @@ def euclidean_distance(city1, city2):
     """
     return np.linalg.norm((city1-city2))
 
+# =============================================================================
+# Unit test neighbour() and sub functions
+# =============================================================================
+
+def test_sample_observation():
+    #cooling schedule selected does not matter for the test
+    schedule = ExponentialCoolingSchedule(100)
+    n_clusters = 3
+    sa = SACluster(n_clusters=n_clusters, cooling_schedule=schedule)
+
+    state = np.zeros(10)
+    state[2:6] = 1
+    state[6:] = 2
+    
+    #for reproducibility
+    np.random.seed(seed=101)
+    actual_index, actual_value = sa.sample_observation(state)
+   
+    expected_value = state[actual_index]
+    
+    assert expected_value == actual_value
+
+    
+
+
+    
+    
+
+    
+
