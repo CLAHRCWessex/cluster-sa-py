@@ -14,6 +14,7 @@ https://docs.pytest.org/en/latest/
 import pytest
 
 import clustering.sa as csa
+from clustering.sa import SACluster, ExponentialCoolingSchedule
 import numpy as np
 
 def test_acceptance_probability_100_1():
@@ -65,6 +66,7 @@ def test_acceptance_probability_low_delta():
     
 def test_acceptance_probability_high_delta():
     '''
+                   
     Tests when new_energy >= old_energy
     No normalisation of delta
     '''
@@ -168,4 +170,66 @@ def test_coru_cooling_schedule():
         
     assert np.array_equal(expected, actuals)
     
+
+# =============================================================================
+# Unit test cost function
+# =============================================================================
+    
+def test_cost_count():
+    schedule = csa.ExponentialCoolingSchedule(100)
+    sa = SACluster(n_clusters=2, cooling_schedule=schedule, 
+                   dist_metric='euclidean')
+    #6 observations on 2 variables
+    data = np.arange(12).reshape((6, 2))
+    state = np.zeros(6)
+    state[3:] = 1
+    actual_energy, actual_count = sa.cost(state, data)
+    expected_count = np.array([3, 3])
+    assert np.array_equal(expected_count, actual_count)
+    
+
+def test_cost_euclidean():
+    '''
+    Tests that the cost function calculates
+    the weighted cluster euclidean distance correctly
+    '''
+    
+    #cooling schedule selected does not matter for the test
+    schedule = ExponentialCoolingSchedule(100)
+    sa = SACluster(n_clusters=2, cooling_schedule=schedule, 
+                   dist_metric='euclidean')
+    
+    # 5 observations on 2 variables
+    data = np.arange(10).reshape((5, 2))  
+    
+    #state = [0, 0, 0, 1, 1]
+    state = np.zeros(5)
+    state[3:] = 1
+    
+    #calculate energy for state and data
+    actual_energy, actual_count = sa.cost(state, data) 
+    
+    #calculate expected energy based on pairwise euclidean distances
+    expected_energy = np.zeros(2)
+    expected = 0
+    
+    for i in range(3):
+        for j in range(i, 3):
+            expected += euclidean_distance(data[i,:], data[j,:]) 
+            
+    expected_energy[0] = expected
+    expected_energy[1] = euclidean_distance(data[3,:], data[4,:]) 
+    
+    print('expected {}'.format(expected_energy))
+
+    assert np.array_equal(actual_energy, expected_energy)
+
+
+def euclidean_distance(city1, city2):
+    """
+    Calculate euc distance between 2 cities
+    5.5 ms to execute
+    cities are np.ndarray (vector with 2 points)
+    """
+    return np.linalg.norm((city1-city2))
 
