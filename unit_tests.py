@@ -238,6 +238,10 @@ def euclidean_distance(city1, city2):
 # =============================================================================
 
 def test_sample_observation():
+    '''
+    Test that an observation is sampled correctly 
+    from an ordered list of cluster observations
+    '''
     #cooling schedule selected does not matter for the test
     schedule = ExponentialCoolingSchedule(100)
     n_clusters = 3
@@ -256,6 +260,10 @@ def test_sample_observation():
     assert expected_value == actual_value
 
 def test_generate_neighbour_state():
+    '''
+    Test that a state is cloned and 
+    correct array element is updated 
+    '''
     state = np.zeros(10)
     state[2:6] = 1
     state[6:] = 2
@@ -273,6 +281,45 @@ def test_generate_neighbour_state():
     actual = sa.generate_neighbour_state(state, i_to_change, new_cluster)
     
     assert np.array_equal(exp_state, actual)
+
+def test_random_cluster_shift_1():
+    #cooling schedule selected does not matter for the test
+    schedule = ExponentialCoolingSchedule(100)
+    n_clusters = 3
+    sa = SACluster(n_clusters=n_clusters, cooling_schedule=schedule)
+    original_cluster = 0
+    
+    #control pseudo-random sampling
+    np.random.seed(101)
+    actual_cluster = sa.random_cluster_shift(original_cluster)
+    
+    #reset sampling
+    np.random.seed(101)
+    n_shift = np.random.randint(n_clusters)
+    expected = (original_cluster + n_shift - 1) % n_clusters
+    
+    assert expected == actual_cluster
+    
+
+def test_random_cluster_shift_2():
+    #cooling schedule selected does not matter for the test
+    schedule = ExponentialCoolingSchedule(100)
+    n_clusters = 10
+    sa = SACluster(n_clusters=n_clusters, cooling_schedule=schedule)
+    original_cluster = 3
+    
+    #control pseudo-random sampling
+    np.random.seed(101)
+    actual_cluster = sa.random_cluster_shift(original_cluster)
+    
+    #reset sampling
+    np.random.seed(101)
+    n_shift = np.random.randint(n_clusters)
+    expected = (original_cluster + n_shift - 1) % n_clusters
+    
+    assert expected == actual_cluster
+
+    
     
 
     
