@@ -196,43 +196,45 @@ class SACluster(object):
         cluster_counts -- count of observations ordered by cluster
         '''
         #sample an observation for state change
-        i_to_change, v0 = self.sample_observation(state)
+        i_to_change, original_cluster_index = self.sample_observation(state)
 
-        #shift the cluster of the sample obs by a random amount using modulo
-        v1 = self.random_cluster_shift(v0)
+        #shift the cluster of the sample obs by a random amount
+        new_cluster_index = self.random_cluster_shift(original_cluster_index)
 
         #create neighbour of state with shifted cluster
-        state_new = self.generate_neighbour_state(state, i_to_change, v1)
+        state_new = self.generate_neighbour_state(state, i_to_change, 
+                                                  new_cluster_index)
 
-        # Find the change in E (cost) for the old group
+        
 # =============================================================================
 #        Not convinced this bit is a correct port yet.
-#        Test carefully!
+#        It is tested, but need to think of more tests!
 # =============================================================================
-        original_group = (state == v0) # Members of the original group (tf0)
+        # Find the change in E (cost) for the old cluster
+        delta_group_E0_sum = self.delta_cluster_energy(state, data, 
+                                                       original_cluster_index, 
+                                                       i_to_change)
 
-
-        delta_group_E0_sum = cdist(np.array([data[i_to_change, :]]),
-                                   data[original_group, : ],
-                                   self.dist_metric).sum()
-
-        new_group = (state == v1)
-
-        delta_group_E1_sum = cdist(np.array([data[i_to_change, :]]),
-                                   data[new_group, : ],
-                                   self.dist_metric).sum()
+        
+        # Find the change in E (cost) for the new cluster
+        delta_group_E1_sum = self.delta_cluster_energy(state, data, 
+                                                       new_cluster_index, 
+                                                       i_to_change)
 
         new_energies, new_counts = self.copy_cluster_metadata(cluster_energies,
                                                               cluster_counts)
 
-        new_energies[v0] -= delta_group_E0_sum
-        new_energies[v1] += delta_group_E1_sum;
+        #update cluster energies
+        new_energies[original_cluster_index] -= delta_group_E0_sum
+        new_energies[new_cluster_index] += delta_group_E1_sum;
 
-        new_counts[v0] -= 1;
-        new_counts[v1] += 1;
+        #update cluster counts
+        new_counts[original_cluster_index] -= 1;
+        new_counts[new_cluster_index] += 1;
 
         return state_new, new_energies, new_counts
 
+    
 
     def sample_observation(self, state):
         '''
@@ -251,7 +253,8 @@ class SACluster(object):
 
         '''
         sample_index = np.random.randint(state.shape[0])
-        return sample_index, state[sample_index]
+        cluster_index = state[sample_index]
+        return sample_index, cluster_index
 
 
     def random_cluster_shift(self, original_cluster):
