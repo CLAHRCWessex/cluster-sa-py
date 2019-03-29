@@ -10,12 +10,14 @@ https://docs.pytest.org/en/latest/
 'conda install pytest' or 'pip install pytest'
 
 """
-
+from scipy.spatial.distance import pdist, cdist
+import numpy as np
 import pytest
+
 
 import clustering.sa as csa
 from clustering.sa import SACluster, ExponentialCoolingSchedule
-import numpy as np
+
 
 def test_acceptance_probability_100_1():
     '''
@@ -320,6 +322,10 @@ def test_random_cluster_shift_2():
     assert expected == actual_cluster
 
 def test_copy_cluster_metadata_energy():
+    '''
+    Test copying unit meta data - in particular that energy
+    has been copied correctly.
+    '''
     #cooling schedule selected does not matter for the test
     schedule = ExponentialCoolingSchedule(100)
     n_clusters = 6
@@ -334,6 +340,10 @@ def test_copy_cluster_metadata_energy():
     
     
 def test_copy_cluster_metadata_count():
+    '''
+    Test copying unit meta data - in particular that counts
+    have been copied correctly.
+    '''
     #cooling schedule selected does not matter for the test
     schedule = ExponentialCoolingSchedule(100)
     n_clusters = 6
@@ -347,6 +357,56 @@ def test_copy_cluster_metadata_count():
     assert np.array_equal(actual_c, count)
     
 
-
+def test_energy_delta():
+    '''
+    Tests the sa.delta_cluster_energy()
+    
+    This calculates the delta (incremental difference)
+    that single data point makes to a distribution
+    
+    NOT 100% convinced this is correct.
+    
+    '''
+    
+    #cooling schedule selected does not matter for the test
+    schedule = ExponentialCoolingSchedule(100)
+    sa = SACluster(n_clusters=2, cooling_schedule=schedule, 
+                   dist_metric='euclidean')
+    
+    # 5 observations on 2 variables
+    data = np.arange(10).reshape((5, 2))  
+    
+    #state = [0, 0, 0, 1, 1]
+    state = np.zeros(5)
+    state[3:] = 1
+    
+    #calculate energy for state and data
+    actual_energy, actual_count = sa.cost(state, data) 
+    
+    cluster_index = 0
+    observation_index = 1
+        
+    actual = sa.delta_cluster_energy(state, data, cluster_index, 
+                                      observation_index)
+    
+    print('delta {}'.format(actual))
+    
+    
+    assigned_to_cluster = (state == cluster_index) 
+    
+    
+    cluster_energy = pdist(data[assigned_to_cluster, : ],
+                           'euclidean').sum()
+    
+    minus_obs = np.array([[0,1], [4,5]])
+    cluster_energy2 = pdist(minus_obs, 'euclidean').sum()
+    
+    expected_delta = abs(cluster_energy2-cluster_energy)
+    
+    assert actual == expected_delta
+    
+    
+    
+    
     
 

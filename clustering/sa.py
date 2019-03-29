@@ -211,9 +211,6 @@ class SACluster(object):
 # =============================================================================
         original_group = (state == v0) # Members of the original group (tf0)
 
-        delta_group_E0_sum = cdist(data[i_to_change, :],
-                                   data[original_group, : ],
-                                   self.dist_metric).sum()
 
         delta_group_E0_sum = cdist(np.array([data[i_to_change, :]]),
                                    data[original_group, : ],
@@ -305,6 +302,42 @@ class SACluster(object):
         state_new = state.copy()
         state_new[i_to_change] = new_cluster
         return state_new
+    
+    
+    def delta_cluster_energy(self, state, data, cluster_index, 
+                             observation_index):
+        '''
+        Calculates the amount of energy that an individual 
+        observation adds to a cluster (refered to as delta)
+        
+        Returns:
+        -------
+        Float, representing the amount of energy an observation
+        adds to a specifed cluster
+        
+        Keyword arguments:
+        -------
+        state -- np.ndarray (vector),
+                 current cluster assignments by observation
+                 
+        data -- unlabelled x values
+        
+        cluster_index -- int, unique identifier for the cluster 
+    
+        observation_index -- int, index within data to analyse
+        
+        
+        '''
+        #boolean index of all observations assigned to cluster
+        assigned_to_cluster = (state == cluster_index) 
+        
+        #note: cdist is equivalent of matlab pdist2
+        delta_energy = cdist(np.array([data[observation_index, :]]),
+                                   data[assigned_to_cluster, : ],
+                                   self.dist_metric).sum()
+        
+
+        return delta_energy
 
 
     def copy_cluster_metadata(self, cluster_energies, cluster_counts):
@@ -354,3 +387,12 @@ def acceptance_probability(old_energy, new_energy, temp,
         prob = np.exp(-delta / temp)
 
     return prob
+
+
+
+    
+    
+
+
+
+
