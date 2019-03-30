@@ -7,6 +7,7 @@ Created on Mon Mar 25 15:31:34 2019
 """
 
 from abc import ABC, abstractmethod
+import time
 from scipy.spatial.distance import pdist, cdist
 import numpy as np
 
@@ -74,6 +75,13 @@ class CoruCoolingSchedule(AbstractCoolingSchedule):
 
 
 class SACluster(object):
+    '''
+    Encapsulates a simulated annealing clustering algorithm
+    
+    Public methods:
+        
+    
+    '''
 
     def __init__(self, n_clusters, cooling_schedule, dist_metric='correlation',
                  max_iter=np.float32(1e5)):
@@ -127,9 +135,15 @@ class SACluster(object):
 
         n_observations = data.shape[0]
 
+        #TM notes: this isn't quite right as already setting this in class
+        #constructor
+        # MaxIter - CP changed to 150 because it seems to be enough looking at the output
+        #TM note - if this varies then we should encapsulate its calculation
+        self.max_iter = max(150 * n_observations, 10000)
+
         #If we go this long without a change then stop.
         #TM notes - why 3000?
-        stopping_distance = max(2*n_observations, 3000)
+        stopping_distance = max(2 * n_observations, 3000)
 
         state_init = np.random.randint(low=0,
                                        high=self.n_clusters,
@@ -139,11 +153,78 @@ class SACluster(object):
 
         cluster_energy, cluster_count = self.cost(state, data)
 
+        t0 = time.time() - 3 #why -3?
+        n_changes = 0
+        delta_sum = 0
+        delta_sum_n = 0
+        Einit = np.divide(cluster_energy, cluster_count)
+        Emin = Einit
+        state_min = state_init.copy()
+        delta_E_scaling = 1
+        Es = np.empty(self.max_iter)
+        last_change_i = 1
+
+        for i in range(self.max_iter):
+            T = self.cooling_schedule.cool_temperature(i)
+            state_new, new_energy, new_count = self.neighbour(state,
+                                                              data,
+                                                              cluster_energy,
+                                                              cluster_count) 
+            
+            E = np.divide(cluster_energy, cluster_count)
+            Enew = np.divide(new_energy, new_count)
+            
+            if Enew > E:
+                # Get a running total of delta E so we can calculate 
+                # an average and use that to scale the acceptance
+                # probability
+                delta_sum += (Enew - E)
+                delta_sum_n += 1
+                
+                #mean positive value
+                delta_E_scaling = delta_sum / delta_sum_n
+                
+                P = acceptance_probability(E, Enew, T, delta_E_scaling)
+                
+                if P == 1 or P > np.random.rand():
+                     
+                    last_change_i = i
+                    #TM Note: should be okay but just
+                    #check if need to use state_new.copy()
+                    state = state_new
+                    E = Enew
+                    group_E_sum = group_Enew_sum
+                    group_E_n = group_Enew_n
+                    n_changes += 1
+                    
+                    if Enew < Emin:
+                        Emin = Enew
+                        state_min = state_new
+                
+                Es[i] = E
+                
+                #Justin's plot code goes here...
+                
+            # Automatically stop if nothing has changed for 2*nobvs iterations
+            if  i > last_change_i + stopping_distance:
+                msg = 'STOPPING @ iteration {0}. No change for {1} iterations...\n'
+                print(msg.format(i, stopping_distance))
+                break
+            
+            #end of iter loop
+            
+        if not np.array_equal(state_min, state):
+            print('INFO: Returning state_min not current state...')
+            state = state_min
+            E = Emin
+
+        return state, E
 
 
     def cost(self, state, data):
         '''
-        Calculate the energy of the solution
+        Calculate the energy of the whole solution.
+        
 
         Keyword arguments:
             state -- numpy.ndarray (vector), each index corresponds to an
@@ -202,23 +283,23 @@ class SACluster(object):
         new_cluster_index = self.random_cluster_shift(original_cluster_index)
 
         #create neighbour of state with shifted cluster
-        state_new = self.generate_neighbour_state(state, i_to_change, 
+        state_new = self.generate_neighbour_state(state, i_to_change,
                                                   new_cluster_index)
 
-        
+
 # =============================================================================
 #        Not convinced this bit is a correct port yet.
 #        It is tested, but need to think of more tests!
 # =============================================================================
         # Find the change in E (cost) for the old cluster
-        delta_group_E0_sum = self.delta_cluster_energy(state, data, 
-                                                       original_cluster_index, 
+        delta_group_E0_sum = self.delta_cluster_energy(state, data,
+                                                       original_cluster_index,
                                                        i_to_change)
 
-        
+
         # Find the change in E (cost) for the new cluster
-        delta_group_E1_sum = self.delta_cluster_energy(state, data, 
-                                                       new_cluster_index, 
+        delta_group_E1_sum = self.delta_cluster_energy(state, data,
+                                                       new_cluster_index,
                                                        i_to_change)
 
         new_energies, new_counts = self.copy_cluster_metadata(cluster_energies,
@@ -226,15 +307,15 @@ class SACluster(object):
 
         #update cluster energies
         new_energies[original_cluster_index] -= delta_group_E0_sum
-        new_energies[new_cluster_index] += delta_group_E1_sum;
+        new_energies[new_cluster_index] += delta_group_E1_sum
 
         #update cluster counts
-        new_counts[original_cluster_index] -= 1;
-        new_counts[new_cluster_index] += 1;
+        new_counts[original_cluster_index] -= 1
+        new_counts[new_cluster_index] += 1
 
         return state_new, new_energies, new_counts
 
-    
+
 
     def sample_observation(self, state):
         '''
@@ -274,7 +355,6 @@ class SACluster(object):
         ------
         original_cluster -- int, between 0 and self.n_clusters
                             represents a cluster number
-
         '''
         n_shift = np.random.randint(self.n_clusters)
         new_cluster = (original_cluster + n_shift - 1) % self.n_clusters
@@ -305,40 +385,40 @@ class SACluster(object):
         state_new = state.copy()
         state_new[i_to_change] = new_cluster
         return state_new
-    
-    
-    def delta_cluster_energy(self, state, data, cluster_index, 
+
+
+    def delta_cluster_energy(self, state, data, cluster_index,
                              observation_index):
         '''
-        Calculates the amount of energy that an individual 
+        Calculates the amount of energy that an individual
         observation adds to a cluster (refered to as delta)
-        
+
         Returns:
         -------
         Float, representing the amount of energy an observation
         adds to a specifed cluster
-        
+
         Keyword arguments:
         -------
         state -- np.ndarray (vector),
                  current cluster assignments by observation
-                 
+
         data -- unlabelled x values
-        
-        cluster_index -- int, unique identifier for the cluster 
-    
+
+        cluster_index -- int, unique identifier for the cluster
+
         observation_index -- int, index within data to analyse
-        
-        
+
+
         '''
         #boolean index of all observations assigned to cluster
-        assigned_to_cluster = (state == cluster_index) 
-        
+        assigned_to_cluster = (state == cluster_index)
+
         #note: cdist is equivalent of matlab pdist2
         delta_energy = cdist(np.array([data[observation_index, :]]),
-                                   data[assigned_to_cluster, : ],
-                                   self.dist_metric).sum()
-        
+                             data[assigned_to_cluster, : ],
+                             self.dist_metric).sum()
+
 
         return delta_energy
 
@@ -351,7 +431,8 @@ class SACluster(object):
         Returns
         ------
         A copy of the cluster energies (costs) np.ndarray (vector) and
-        cluster counts (number of obs assigned to each cluster) np.ndarray (vector)
+        cluster counts (number of obs assigned to each cluster) np.ndarray
+        (vector)
 
         Keyword arguments:
         -------
@@ -390,12 +471,3 @@ def acceptance_probability(old_energy, new_energy, temp,
         prob = np.exp(-delta / temp)
 
     return prob
-
-
-
-    
-    
-
-
-
-
