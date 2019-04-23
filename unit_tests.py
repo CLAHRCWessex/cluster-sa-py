@@ -185,7 +185,7 @@ def test_cost_count():
     data = np.arange(12).reshape((6, 2))
     state = np.zeros(6)
     state[3:] = 1
-    actual_energy, actual_count = sa.cost(state, data)
+    actual_energy, actual_count = sa._cost(state, data)
     expected_count = np.array([3, 3])
     assert np.array_equal(expected_count, actual_count)
     
@@ -209,7 +209,7 @@ def test_cost_euclidean():
     state[3:] = 1
     
     #calculate energy for state and data
-    actual_energy, actual_count = sa.cost(state, data) 
+    actual_energy, actual_count = sa._cost(state, data) 
     
     #calculate expected energy based on pairwise euclidean distances
     expected_energy = np.zeros(2)
@@ -255,7 +255,7 @@ def test_sample_observation():
     
     #for reproducibility
     np.random.seed(seed=101)
-    actual_index, actual_value = sa.sample_observation(state)
+    actual_index, actual_value = sa._sample_observation(state)
    
     expected_value = state[actual_index]
     
@@ -280,7 +280,7 @@ def test_generate_neighbour_state():
     schedule = ExponentialCoolingSchedule(100)
     n_clusters = 3
     sa = SACluster(n_clusters=n_clusters, cooling_schedule=schedule)
-    actual = sa.generate_neighbour_state(state, i_to_change, new_cluster)
+    actual = sa._generate_neighbour_state(state, i_to_change, new_cluster)
     
     assert np.array_equal(exp_state, actual)
 
@@ -293,7 +293,7 @@ def test_random_cluster_shift_1():
     
     #control pseudo-random sampling
     np.random.seed(101)
-    actual_cluster = sa.random_cluster_shift(original_cluster)
+    actual_cluster = sa._random_cluster_shift(original_cluster)
     
     #reset sampling
     np.random.seed(101)
@@ -312,7 +312,7 @@ def test_random_cluster_shift_2():
     
     #control pseudo-random sampling
     np.random.seed(101)
-    actual_cluster = sa.random_cluster_shift(original_cluster)
+    actual_cluster = sa._random_cluster_shift(original_cluster)
     
     #reset sampling
     np.random.seed(101)
@@ -334,7 +334,7 @@ def test_copy_cluster_metadata_energy():
     energy = np.arange(n_clusters)
     count = np.arange(10, 10+n_clusters)
     
-    actual_e, actual_c = sa.copy_cluster_metadata(energy, count)
+    actual_e, actual_c = sa._copy_cluster_metadata(energy, count)
     
     assert np.array_equal(actual_e, energy)
     
@@ -352,7 +352,7 @@ def test_copy_cluster_metadata_count():
     energy = np.arange(n_clusters)
     count = np.arange(10, 10+n_clusters)
     
-    actual_e, actual_c = sa.copy_cluster_metadata(energy, count)
+    actual_e, actual_c = sa._copy_cluster_metadata(energy, count)
     
     assert np.array_equal(actual_c, count)
     
@@ -381,12 +381,12 @@ def test_energy_delta():
     state[3:] = 1
     
     #calculate energy for state and data
-    actual_energy, actual_count = sa.cost(state, data) 
+    actual_energy, actual_count = sa._cost(state, data) 
     
     cluster_index = 0
     observation_index = 1
         
-    actual = sa.delta_cluster_energy(state, data, cluster_index, 
+    actual = sa._delta_cluster_energy(state, data, cluster_index, 
                                       observation_index)
     
     print('delta {}'.format(actual))
