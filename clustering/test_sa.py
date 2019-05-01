@@ -17,7 +17,7 @@ if __name__ == '__main__':
     n_clusters = 5
     max_iter = max(150 * unlabelled_x.shape[0], 10000)
     cooling_schedule = CoruCoolingSchedule(1000, max_iter=max_iter)
-    #cooling_schedule = ExponentialCoolingSchedule(1000)
+    cooling_schedule = ExponentialCoolingSchedule(1000)
     sa = SACluster(n_clusters=n_clusters, cooling_schedule=cooling_schedule,
                 dist_metric='euclidean')
 
