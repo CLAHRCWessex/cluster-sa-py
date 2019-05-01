@@ -93,7 +93,7 @@ class SACluster(object):
     '''
 
     def __init__(self, n_clusters, cooling_schedule, dist_metric='correlation',
-                 max_iter=np.int32(1e5)):
+                 max_iter=np.int32(1e5), random_state=None):
         '''
 
         Constructor method.
@@ -123,16 +123,15 @@ class SACluster(object):
                        The maximum number of iterations for the SA
 
 
-
-        TM TO-DO:
-            Not done anything about plot progress...
-
         '''
         self._n_clusters = n_clusters
         self._dist_metric = dist_metric
         self._max_iter = max_iter
         self._cooling_schedule = cooling_schedule
         self._search_history = np.empty(self._max_iter, dtype=np.float64)
+        
+        #random seed for reproducibile results of algorithm
+        np.random.seed(seed=random_state)
         
     @property
     def search_history(self):
