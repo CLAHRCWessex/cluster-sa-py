@@ -80,7 +80,8 @@ class CoruCoolingSchedule(AbstractCoolingSchedule):
         #where did this cooling scheme come from?
         #some standard methods:
         # https://uk.mathworks.com/help/gads/how-simulated-annealing-works.html
-        return np.exp(-(k - 1) * 10 / self.max_iter)
+        t =  np.exp(-(k - 1) * 10 / self.max_iter)
+        return t
 
 
 class SACluster(object):
@@ -132,6 +133,7 @@ class SACluster(object):
         self.dist_metric = dist_metric
         self.max_iter = max_iter
         self.cooling_schedule = cooling_schedule
+        self._energy_history = []
 
     def fit(self, data):
         '''
@@ -157,6 +159,7 @@ class SACluster(object):
         # MaxIter - CP changed to 150 because it seems to be enough looking at the output
         #TM note - if this varies then we should encapsulate its calculation
         self.max_iter = max(150 * n_observations, 10000)
+        
 
         #If we go this long without a change then stop.
         #TM notes - why 3000?
@@ -175,10 +178,11 @@ class SACluster(object):
         delta_sum = 0
         delta_sum_n = 0
         Einit = np.divide(cluster_energy, cluster_count).sum()
+        print('Enit:\t{}'.format(Einit))
         Emin = Einit
         state_min = state_init.copy()
         delta_E_scaling = 1
-        Es = np.empty(self.max_iter)
+        Es = np.zeros(self.max_iter)
         last_change_i = 1
 
 
@@ -192,6 +196,8 @@ class SACluster(object):
                                                                cluster_count) 
             
             E = np.divide(cluster_energy, cluster_count).sum()
+            
+            
             Enew = np.divide(new_energy, new_count).sum()
 
             if Enew > E:
@@ -204,25 +210,25 @@ class SACluster(object):
                 #mean positive value
                 delta_E_scaling = delta_sum / delta_sum_n
                 
-                P = acceptance_probability(E, Enew, T, delta_E_scaling)
-                               
-                if P == 1 or P > np.random.rand():
-                     
-                    last_change_i = i
-                    #TM Note: should be okay but just
-                    #check if need to use state_new.copy()
-                    state = state_new.copy()
-                    E = Enew
-                    cluster_energy = new_energy.copy()
-                    cluster_count = new_count.copy()
-                    n_changes += 1
- 
+            P = acceptance_probability(E, Enew, T, delta_E_scaling)
+                            
+            if P == 1 or P > np.random.rand():
                     
-                    if Enew < Emin:
-                        Emin = Enew
-                        state_min = state_new.copy()
+                last_change_i = i
+                #TM Note: should be okay but just
+                #check if need to use state_new.copy()
+                state = state_new.copy()
+                E = Enew
+                cluster_energy = new_energy.copy()
+                cluster_count = new_count.copy()
+                n_changes += 1
+
                 
-                Es[i] = E
+                if Enew < Emin:
+                    Emin = Enew
+                    state_min = state_new.copy()
+            
+            Es[i] = E
                 
                 #Justin's plot code goes here...
             
@@ -514,3 +520,5 @@ def acceptance_probability(old_energy, new_energy, temp,
         prob = np.exp(-delta / temp)
 
     return prob
+
+
