@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Mon Mar 25 15:31:34 2019
-
-@author: tom
+Classes and functions that support unsupervised clustering
+of data using Simulated Annealing (SA) based algorithms
 """
 
 from abc import ABC, abstractmethod
@@ -62,7 +61,7 @@ class CoruCoolingSchedule(AbstractCoolingSchedule):
 
     def __init__(self, starting_temp, max_iter):
         AbstractCoolingSchedule.__init__(self, starting_temp)
-        self.max_iter = max_iter
+        self._max_iter = max_iter
 
     def cool_temperature(self, k):
         '''
@@ -80,7 +79,7 @@ class CoruCoolingSchedule(AbstractCoolingSchedule):
         #where did this cooling scheme come from?
         #some standard methods:
         # https://uk.mathworks.com/help/gads/how-simulated-annealing-works.html
-        t =  np.exp(-(k - 1) * 10 / self.max_iter)
+        t =  np.exp(-(k - 1) * 10 / self._max_iter)
         return t
 
 
@@ -129,11 +128,11 @@ class SACluster(object):
             Not done anything about plot progress...
 
         '''
-        self.n_clusters = n_clusters
-        self.dist_metric = dist_metric
-        self.max_iter = max_iter
-        self.cooling_schedule = cooling_schedule
-        self._energy_history = []
+        self._n_clusters = n_clusters
+        self._dist_metric = dist_metric
+        self._max_iter = max_iter
+        self._cooling_schedule = cooling_schedule
+        
 
     def fit(self, data):
         '''
@@ -158,7 +157,7 @@ class SACluster(object):
         #constructor
         # MaxIter - CP changed to 150 because it seems to be enough looking at the output
         #TM note - if this varies then we should encapsulate its calculation
-        self.max_iter = max(150 * n_observations, 10000)
+        #self._max_iter = max(150 * n_observations, 10000)
         
 
         #If we go this long without a change then stop.
@@ -166,7 +165,7 @@ class SACluster(object):
         stopping_distance = max(2 * n_observations, 3000)
 
         state_init = np.random.randint(low=0,
-                                       high=self.n_clusters,
+                                       high=self._n_clusters,
                                        size=n_observations)
 
         state = state_init.copy()
@@ -178,18 +177,17 @@ class SACluster(object):
         delta_sum = 0
         delta_sum_n = 0
         Einit = np.divide(cluster_energy, cluster_count).sum()
-        print('Enit:\t{}'.format(Einit))
         Emin = Einit
         state_min = state_init.copy()
         delta_E_scaling = 1
-        Es = np.zeros(self.max_iter)
+        Es = np.zeros(self._max_iter)
         last_change_i = 1
 
 
         #why only a single loop for each temp?
         #standard SA has multiple iterations at each temperature...
-        for i in range(self.max_iter):
-            T = self.cooling_schedule.cool_temperature(i)
+        for i in range(self._max_iter):
+            T = self._cooling_schedule.cool_temperature(i)
             state_new, new_energy, new_count = self._neighbour(state,
                                                                data,
                                                                cluster_energy,
@@ -218,7 +216,7 @@ class SACluster(object):
                 #TM Note: should be okay but just
                 #check if need to use state_new.copy()
                 state = state_new.copy()
-                E = Enew
+                E = Enew 
                 cluster_energy = new_energy.copy()
                 cluster_count = new_count.copy()
                 n_changes += 1
@@ -232,11 +230,11 @@ class SACluster(object):
                 
                 #Justin's plot code goes here...
             
-            if  i == self.max_iter or i > last_change_i + stopping_distance:
+            if  i == self._max_iter or i > last_change_i + stopping_distance:
                 msg = 'Iter {0}/{1} {2}. Group changes={3}. E={4} E/Einit={5}.'
                 msg += ' E/Emin={6}\n'
                 
-                print(msg.format(i, self.max_iter, 100*i/self.max_iter, 
+                print(msg.format(i, self._max_iter, 100*i/self._max_iter, 
                                  n_changes, E, E/Einit, E/Emin))
             
             
@@ -256,7 +254,7 @@ class SACluster(object):
             msg = 'Iter {0}/{1} {2}. Group changes={3}. E={4} E/Einit={5}.'
             msg += ' E/Emin={6}\n'
                 
-            print(msg.format(i, self.max_iter, 100*i/self.max_iter, 
+            print(msg.format(i, self._max_iter, 100*i/self._max_iter, 
                              n_changes, E, E/Einit, E/Emin))
 
 
@@ -272,7 +270,7 @@ class SACluster(object):
         ------
         state -- numpy.ndarray (vector), each index corresponds to an
                     observation each value is a int between 0 and
-                    self.n_clusters (exclusive) that indicates to which
+                    self._n_clusters (exclusive) that indicates to which
                     cluster the observation has been assigned
 
         data -- numpy.ndarray (matrix), unlabelled x data
@@ -284,15 +282,15 @@ class SACluster(object):
         1: nd.array (vector), count of points in each cluster
         '''
 
-        cluster_count = np.zeros(self.n_clusters, dtype=np.int64)
-        cluster_energy = np.zeros(self.n_clusters, dtype=np.float64)
+        cluster_count = np.zeros(self._n_clusters, dtype=np.int64)
+        cluster_energy = np.zeros(self._n_clusters, dtype=np.float64)
 
-        for cluster_index in range(self.n_clusters):
+        for cluster_index in range(self._n_clusters):
             assigned_to = (state == cluster_index)
 
             cluster_count[cluster_index] = np.count_nonzero(assigned_to)
             cluster_energy[cluster_index] = pdist(data[assigned_to, :],
-                                                  self.dist_metric).sum()
+                                                  self._dist_metric).sum()
 
         return cluster_energy, cluster_count
 
@@ -392,21 +390,21 @@ class SACluster(object):
 
         Shifts a cluster number by a random amount using modulo.
 
-        Assumes that original_cluster is between 0 and self.n_clusters
+        Assumes that original_cluster is between 0 and self._n_clusters
         (no validation)
 
         Keyword arguments:
         ------
-        original_cluster -- int, between 0 and self.n_clusters
+        original_cluster -- int, between 0 and self._n_clusters
                             represents a cluster number
 
         Returns
         ------
-        new_cluster -- int, between 0 and self.n_clusters (exclusive)
+        new_cluster -- int, between 0 and self._n_clusters (exclusive)
                        A new cluster number
         '''
-        n_shift = np.random.randint(self.n_clusters)
-        new_cluster = (original_cluster + n_shift - 1) % self.n_clusters
+        n_shift = np.random.randint(self._n_clusters)
+        new_cluster = (original_cluster + n_shift - 1) % self._n_clusters
         return new_cluster
 
 
@@ -421,7 +419,7 @@ class SACluster(object):
                  current cluster assignments by observation
 
         i_to_change -- int, index within state to update
-        new_cluster -- int, between 0 and self.n_clusters (exclusive)
+        new_cluster -- int, between 0 and self._n_clusters (exclusive)
                        the updated cluster number
 
         Returns
@@ -466,7 +464,7 @@ class SACluster(object):
         #note: cdist is equivalent of matlab pdist2
         delta_energy = cdist(np.array([data[observation_index, :]]),
                              data[assigned_to_cluster, : ],
-                             self.dist_metric).sum()
+                             self._dist_metric).sum()
 
 
         return delta_energy

@@ -19,8 +19,8 @@ if __name__ == '__main__':
     cooling_schedule = CoruCoolingSchedule(1000, max_iter=max_iter)
     cooling_schedule = ExponentialCoolingSchedule(1000)
     sa = SACluster(n_clusters=n_clusters, cooling_schedule=cooling_schedule,
-                dist_metric='euclidean')
+                dist_metric='euclidean', max_iter=max_iter)
 
     state, energy, search_history = sa.fit(unlabelled_x)
 
-    print(pd.DataFrame(search_history))
+    print(energy)
