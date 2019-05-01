@@ -93,7 +93,7 @@ class SACluster(object):
     '''
 
     def __init__(self, n_clusters, cooling_schedule, dist_metric='correlation',
-                 max_iter=np.float32(1e5)):
+                 max_iter=np.int32(1e5)):
         '''
 
         Constructor method.
@@ -165,17 +165,10 @@ class SACluster(object):
 
         #to-do defensive validation of parameters
 
-        n_observations = data.shape[0]
-
-        #TM notes: this isn't quite right as already setting this in class
-        #constructor
-        # MaxIter - CP changed to 150 because it seems to be enough looking at the output
-        #TM note - if this varies then we should encapsulate its calculation
-        #self._max_iter = max(150 * n_observations, 10000)
-        
+        n_observations = data.shape[0]       
 
         #If we go this long without a change then stop.
-        #TM notes - why 3000?
+        #TM notes - why 3000?  What does the literature say?  Tuning parameter?
         stopping_distance = max(2 * n_observations, 3000)
 
         state_init = np.random.randint(low=0,
@@ -194,7 +187,6 @@ class SACluster(object):
         Emin = Einit
         state_min = state_init.copy()
         delta_E_scaling = 1
-        #Es = np.zeros(self._max_iter)
         last_change_i = 1
 
 
@@ -227,9 +219,8 @@ class SACluster(object):
             if P == 1 or P > np.random.rand():
                     
                 last_change_i = i
-                #TM Note: should be okay but just
-                #check if need to use state_new.copy()
-                state = state_new.copy()
+                #checked produces same behaviour as state_new.copy()
+                state = state_new
                 E = Enew 
                 cluster_energy = new_energy.copy()
                 cluster_count = new_count.copy()
@@ -242,8 +233,7 @@ class SACluster(object):
             
             self._search_history[i] = E
                 
-                #Justin's plot code goes here...
-            
+                        
             if  i == self._max_iter or i > last_change_i + stopping_distance:
                 msg = 'Iter {0}/{1} {2}. Group changes={3}. E={4} E/Einit={5}.'
                 msg += ' E/Emin={6}\n'
