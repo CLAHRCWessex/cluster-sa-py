@@ -177,32 +177,36 @@ class SACluster(object):
 
         state = state_init.copy()
 
+        #two arrays of energy and counts by cluster
         cluster_energy, cluster_count = self._cost(state, data)
 
-        t0 = time.time() - 3 #why -3?
         n_changes = 0
         delta_sum = 0
         delta_sum_n = 0
-        Einit = np.divide(cluster_energy, cluster_count).sum()
-        Emin = Einit
+        
+
+        energy_init = np.divide(cluster_energy, cluster_count).sum()
+        energy_min = energy_init
         state_min = state_init.copy()
         delta_E_scaling = 1
         last_change_i = 1
 
-
-        #why only a single loop for each temp?
-        #standard SA has multiple iterations at each temperature...
+        #sa implemented as 1 iteration at each temp and v.slow cooling
+        #some SA implementation have multiple iterations at each temperature... 
+        #can I refactor so that you can easily switch - or is it easier
+        #to have a different class?
         for i in range(self._max_iter):
             T = self._cooling_schedule.cool_temperature(i)
-            state_new, new_energy, new_count = self._neighbour(state,
-                                                               data,
-                                                               cluster_energy,
-                                                               cluster_count) 
+
+            #three arrays for new solution - state, energy, count
+            state_new, cluster_energy_new, cluster_count_new = self._neighbour(state,
+                                                                               data,
+                                                                               cluster_energy,
+                                                                               cluster_count) 
             
             E = np.divide(cluster_energy, cluster_count).sum()
             
-            
-            Enew = np.divide(new_energy, new_count).sum()
+            Enew = np.divide(cluster_energy_new, cluster_count_new).sum()
 
             if Enew > E:
                 # Get a running total of delta E so we can calculate 
@@ -214,21 +218,21 @@ class SACluster(object):
                 #mean positive value
                 delta_E_scaling = delta_sum / delta_sum_n
                 
-            P = acceptance_probability(E, Enew, T, delta_E_scaling)
+            sample_prob = acceptance_probability(E, Enew, T, delta_E_scaling)
                             
-            if P == 1 or P > np.random.rand():
+            if sample_prob == 1 or sample_prob > np.random.rand():
                     
                 last_change_i = i
                 #checked produces same behaviour as state_new.copy()
                 state = state_new
                 E = Enew 
-                cluster_energy = new_energy.copy()
-                cluster_count = new_count.copy()
+                cluster_energy = cluster_energy_new.copy()
+                cluster_count = cluster_count_new.copy()
                 n_changes += 1
 
                 
-                if Enew < Emin:
-                    Emin = Enew
+                if Enew < energy_min:
+                    energy_min = Enew
                     state_min = state_new.copy()
             
             self._search_history[i] = E
@@ -239,7 +243,7 @@ class SACluster(object):
                 msg += ' E/Emin={6}\n'
                 
                 print(msg.format(i, self._max_iter, 100*i/self._max_iter, 
-                                 n_changes, E, E/Einit, E/Emin))
+                                 n_changes, E, E/energy_init, E/energy_min))
             
             
             # Automatically stop if nothing has changed for 2*nobvs iterations
@@ -253,13 +257,13 @@ class SACluster(object):
         if not np.array_equal(state_min, state):
             print('INFO: Returning state_min not current state...')
             state = state_min
-            E = Emin
+            E = energy_min
             
             msg = 'Iter {0}/{1} {2}. Group changes={3}. E={4} E/Einit={5}.'
             msg += ' E/Emin={6}\n'
                 
             print(msg.format(i, self._max_iter, 100*i/self._max_iter, 
-                             n_changes, E, E/Einit, E/Emin))
+                             n_changes, E, E/energy_init, E/energy_min))
 
 
         return state, E
@@ -282,7 +286,7 @@ class SACluster(object):
         Returns:
         -----
         Tuple:
-        0: nd.array (vector), cluster energy (cost) 
+        0: nd.array (vector), cluster energies (cost) 
         1: nd.array (vector), count of points in each cluster
         '''
 
