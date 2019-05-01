@@ -132,7 +132,21 @@ class SACluster(object):
         self._dist_metric = dist_metric
         self._max_iter = max_iter
         self._cooling_schedule = cooling_schedule
+        self._search_history = np.empty(self._max_iter, dtype=np.float64)
         
+    @property
+    def search_history(self):
+        '''
+        Get the search history (energy levels)
+        of the SA.
+
+        Returns
+        ------
+        np.ndarray containing the energy level 
+        of the solution at each iteration of the algorithm
+        '''
+        return self._search_history
+
 
     def fit(self, data):
         '''
@@ -180,7 +194,7 @@ class SACluster(object):
         Emin = Einit
         state_min = state_init.copy()
         delta_E_scaling = 1
-        Es = np.zeros(self._max_iter)
+        #Es = np.zeros(self._max_iter)
         last_change_i = 1
 
 
@@ -226,7 +240,7 @@ class SACluster(object):
                     Emin = Enew
                     state_min = state_new.copy()
             
-            Es[i] = E
+            self._search_history[i] = E
                 
                 #Justin's plot code goes here...
             
@@ -258,7 +272,7 @@ class SACluster(object):
                              n_changes, E, E/Einit, E/Emin))
 
 
-        return state, E, Es
+        return state, E
 
 
     def _cost(self, state, data):
@@ -433,7 +447,7 @@ class SACluster(object):
         state_new[i_to_change] = new_cluster
         return state_new
 
-
+    
     def _delta_cluster_energy(self, state, data, cluster_index,
                              observation_index):
         '''
